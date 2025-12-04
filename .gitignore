@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.vscode/
+resources/screenshots/*.png
+resources/screenshots/*.jpg
+resources/screenshots/*.jpeg
+
+# macOS
+.DS_Store
