@@ -2,8 +2,6 @@
 
 A minimal tower-defense game built with `pygame`. Place plants on a 5×9 lawn grid to generate sun, shoot peas, and block zombies. Survive the waves to win.
 
-> Note: The screenshots referenced below use placeholder paths. Please save your attached images into `resources/screenshots/` with the filenames shown, or adjust the image links accordingly.
-
 ## Description
 A lightweight Pygame demo of the classic tower-defense idea: manage resources (sun), place plants (Sunflower, Peashooter, WallNut), and defend lanes from advancing zombies. Designed for beginners and coursework demos, featuring clean OOP structure, simple visuals, and scalable wave difficulty.
 
@@ -45,24 +43,15 @@ python游戏制作/
 ```
 
 ## Screenshots
-Place your images in `resources/screenshots/` and update paths if needed.
-
 ![Screenshot 1](resources/screenshots/screenshot1.png)
-
 ![Screenshot 2](resources/screenshots/screenshot2.png)
-
 ![Screenshot 3](resources/screenshots/screenshot3.png)
 
-## Roadmap Ideas
-- Art & audio: sprite sheets, animations, SFX
-- More plants/zombies: ice peas, double shooters, bucket/football zombies
-- Level progression: selectable stages, boss waves, curves
-- Balancing: tuned HP/DMG/AS, playtesting
-- Save & stats: progress, best waves, time, kills
-- Input & performance: hotkeys, scaling, FPS tweaks
-- Smarter AI: behaviors, targeting, lane pressure
-- Modularization: split into packages for plants, zombies, UI
-- Testing & CI: unit tests for core logic, auto checks
-
 ## License
-Recommend using MIT or BSD-3-Clause. Add a `LICENSE` file before publishing.
+MIT
+
+## Contributing
+- Fork and create a feature branch.
+- Keep code simple and consistent with existing style.
+- Include brief docstrings for new classes/functions.
+- Update README if you add plants, zombies, or gameplay features.
