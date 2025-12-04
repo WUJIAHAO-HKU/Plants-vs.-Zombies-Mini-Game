@@ -39,6 +39,53 @@ GRID_OFFSET_Y = 100  # 网格Y偏移
 SUN_FALL_SPEED = 2  # 阳光下落速度
 SUN_GENERATION_TIME = 5  # 阳光生成时间间隔(秒)
 ZOMBIE_GENERATION_TIME = 10  # 僵尸生成初始时间间隔(秒)
+LAWN_MOWER_SPEED = 14  # 小推车速度
+
+class LawnMower:
+    def __init__(self, row):
+        self.row = row
+        self.x = GRID_OFFSET_X - 10
+        self.y = GRID_OFFSET_Y + row * GRID_SIZE + GRID_SIZE // 4
+        self.width = GRID_SIZE // 2
+        self.height = GRID_SIZE // 2
+        self.active = True      # 仍可驻守在起始位置
+        self.triggered = False  # 是否已启动
+        self.speed = LAWN_MOWER_SPEED
+
+    def update(self, zombies):
+        if not self.active:
+            return
+        # 如果已触发则向右移动并碾碎本行僵尸
+        if self.triggered:
+            self.x += self.speed
+            for z in zombies[:]:
+                if z.row == self.row and (self.x <= z.x <= self.x + self.width + 20):
+                    z.health = 0
+                    z.active = False
+                    zombies.remove(z)
+            # 移出屏幕后失效
+            if self.x > SCREEN_WIDTH + 20:
+                self.active = False
+
+    def try_trigger(self, zombies):
+        if self.triggered or not self.active:
+            return
+        # 当有僵尸到达行最左端附近时触发
+        for z in zombies:
+            if z.row == self.row and z.x <= GRID_OFFSET_X + 15:
+                self.triggered = True
+                break
+
+    def draw(self, surface):
+        if not self.active:
+            return
+        body_rect = pygame.Rect(int(self.x), int(self.y), self.width, self.height)
+        pygame.draw.rect(surface, (180, 180, 180), body_rect)
+        pygame.draw.rect(surface, BLACK, body_rect, 2)
+        # 车轮
+        wheel_r = self.height // 6
+        pygame.draw.circle(surface, BLACK, (int(self.x + self.width*0.2), int(self.y + self.height)), wheel_r)
+        pygame.draw.circle(surface, BLACK, (int(self.x + self.width*0.8), int(self.y + self.height)), wheel_r)
 
 # 植物类
 class Plant:
@@ -279,6 +326,32 @@ class Zombie:
         health_width = 30 * (self.health / 100)
         pygame.draw.rect(surface, RED, (self.x - 30, self.y - 10, health_width, 5))
 
+class FastZombie(Zombie):
+    def __init__(self, row):
+        super().__init__(row)
+        self.speed = random.uniform(0.8, 1.2)
+        self.health = 80
+        self.attack_power = 0.4
+    def draw(self, surface):
+        color = (120, 160, 120)
+        pygame.draw.rect(surface, color, (self.x - 28, self.y + 5, 28, GRID_SIZE - 10), 0)
+        pygame.draw.circle(surface, color, (int(self.x - 14), int(self.y + 15)), 18)
+        health_width = 28 * (self.health / 80)
+        pygame.draw.rect(surface, RED, (self.x - 28, self.y - 10, health_width, 5))
+
+class TankZombie(Zombie):
+    def __init__(self, row):
+        super().__init__(row)
+        self.speed = random.uniform(0.2, 0.4)
+        self.health = 200
+        self.attack_power = 0.8
+    def draw(self, surface):
+        color = (100, 100, 100)
+        pygame.draw.rect(surface, color, (self.x - 35, self.y - 5, 35, GRID_SIZE + 10), 0)
+        pygame.draw.circle(surface, color, (int(self.x - 18), int(self.y + 5)), 22)
+        health_width = 35 * (self.health / 200)
+        pygame.draw.rect(surface, RED, (self.x - 35, self.y - 12, health_width, 6))
+
 # 游戏类
 class PlantsVsZombies:
     def __init__(self):
@@ -303,6 +376,19 @@ class PlantsVsZombies:
         self.font = pygame.font.SysFont('SimHei', 24)
         self.large_font = pygame.font.SysFont('SimHei', 48)
         self.bg_color = (220, 255, 220)
+        # 初始化每一行的小推车
+        self.lawn_mowers = [LawnMower(row) for row in range(GRID_ROWS)]
+        # 关卡选择
+        self.level = None  # 'easy' | 'normal' | 'hard'
+        self.show_menu = True
+        # 暂停与UI
+        self.paused = False
+        # 顶部功能按钮布局
+        self.ui_buttons = {
+            'pause': pygame.Rect(SCREEN_WIDTH - 330, 50, 90, 36),
+            'restart': pygame.Rect(SCREEN_WIDTH - 230, 50, 90, 36),
+            'menu': pygame.Rect(SCREEN_WIDTH - 130, 50, 90, 36)
+        }
     
     def handle_events(self):
         for event in pygame.event.get():
@@ -313,11 +399,24 @@ class PlantsVsZombies:
                     return False
                 elif event.key == pygame.K_r and (self.game_over or self.game_win):
                     self.__init__()  # 重置游戏
+                # 键盘不再控制暂停/重开/主菜单
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
                 
                 # 如果游戏结束，忽略点击
                 if self.game_over or self.game_win:
+                    return True
+
+                # 菜单选择关卡
+                if self.show_menu:
+                    self.handle_menu_click(x, y)
+                    return True
+
+                # 顶部功能按钮点击
+                if self.handle_top_buttons_click(x, y):
+                    return True
+                # 暂停状态下不处理战斗点击（除按钮外已返回）
+                if self.paused:
                     return True
                     
                 # 检查是否点击了选择植物按钮
@@ -332,6 +431,52 @@ class PlantsVsZombies:
                 self.collect_suns(x, y)
         
         return True
+
+    def handle_menu_click(self, x, y):
+        btn_w, btn_h = 180, 60
+        top_y = SCREEN_HEIGHT//2 - 120
+        centers = [
+            (SCREEN_WIDTH//2 - btn_w//2, top_y),
+            (SCREEN_WIDTH//2 - btn_w//2, top_y + 80),
+            (SCREEN_WIDTH//2 - btn_w//2, top_y + 160)
+        ]
+        labels = [('easy', '简单'), ('normal', '普通'), ('hard', '困难')]
+        for idx, (lx, ly) in enumerate(centers):
+            if lx <= x <= lx + btn_w and ly <= y <= ly + btn_h:
+                self.level = labels[idx][0]
+                # 根据关卡配置参数
+                if self.level == 'easy':
+                    self.max_waves = 4
+                    self.zombie_interval = 10
+                elif self.level == 'normal':
+                    self.max_waves = 5
+                    self.zombie_interval = 8
+                else:
+                    self.max_waves = 7
+                    self.zombie_interval = 6
+                self.show_menu = False
+                break
+
+    def handle_top_buttons_click(self, x, y):
+        # 仅在战斗界面显示按钮
+        if self.show_menu:
+            return False
+        # 暂停/恢复
+        if self.ui_buttons['pause'].collidepoint(x, y) and not (self.game_over or self.game_win):
+            self.paused = not self.paused
+            return True
+        # 重开当前关卡
+        if self.ui_buttons['restart'].collidepoint(x, y):
+            current_level = self.level
+            self.__init__()
+            self.show_menu = False
+            self.level = current_level
+            return True
+        # 返回主菜单
+        if self.ui_buttons['menu'].collidepoint(x, y):
+            self.__init__()
+            return True
+        return False
     
     def handle_plant_selection(self, x, y):
         button_width = 100
@@ -395,11 +540,26 @@ class PlantsVsZombies:
             self.last_zombie_generation = current_time
             
             # 计算当前应该生成多少僵尸
-            zombies_to_spawn = min(self.wave_count + 1, 3)
+            base = 1 if self.level == 'easy' else (2 if self.level == 'normal' else 3)
+            zombies_to_spawn = min(base + self.wave_count//2, 4)
             
             for _ in range(zombies_to_spawn):
                 row = random.randint(0, GRID_ROWS - 1)
-                self.zombies.append(Zombie(row))
+                # 按关卡与波次选择僵尸类型
+                r = random.random()
+                if self.level == 'easy':
+                    z = Zombie(row) if r < 0.7 else FastZombie(row)
+                elif self.level == 'normal':
+                    z = FastZombie(row) if r < 0.5 else Zombie(row)
+                else:
+                    # 困难包含重装僵尸
+                    if r < 0.4:
+                        z = FastZombie(row)
+                    elif r < 0.8:
+                        z = Zombie(row)
+                    else:
+                        z = TankZombie(row)
+                self.zombies.append(z)
             
             self.wave_count += 1
             
@@ -414,6 +574,10 @@ class PlantsVsZombies:
         current_time = time.time()
         
         if not self.game_over and not self.game_win:
+            if self.show_menu:
+                return
+            if self.paused:
+                return
             # 生成阳光
             self.generate_sun(current_time)
             
@@ -452,10 +616,22 @@ class PlantsVsZombies:
             for zombie in self.zombies[:]:
                 game_over = zombie.update(self.plants)
                 if game_over:
-                    self.game_over = True
-                    break
+                    # 尝试触发对应行的小推车
+                    for mower in self.lawn_mowers:
+                        if mower.row == zombie.row:
+                            mower.try_trigger(self.zombies)
+                            break
+                    # 若该行小推车未能及时触发或已用完，则游戏结束
+                    if not any(m.row == zombie.row and m.active for m in self.lawn_mowers):
+                        self.game_over = True
+                        break
                 if not zombie.active:
                     self.zombies.remove(zombie)
+
+            # 更新并触发小推车
+            for mower in self.lawn_mowers:
+                mower.try_trigger(self.zombies)
+                mower.update(self.zombies)
             
             # 检查胜利条件
             if self.wave_count >= self.max_waves and len(self.zombies) == 0:
@@ -464,6 +640,24 @@ class PlantsVsZombies:
     def draw(self, surface):
         # 清屏
         surface.fill(self.bg_color)
+
+        # 菜单界面
+        if self.show_menu:
+            title = self.large_font.render('选择关卡', True, BLACK)
+            surface.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, SCREEN_HEIGHT//2 - 200))
+            btn_w, btn_h = 180, 60
+            top_y = SCREEN_HEIGHT//2 - 120
+            texts = [('简单', 'easy'), ('普通', 'normal'), ('困难', 'hard')]
+            colors = [(180, 255, 180), (160, 240, 160), (140, 220, 140)]
+            for i, (label, key) in enumerate(texts):
+                x = SCREEN_WIDTH//2 - btn_w//2
+                y = top_y + i*80
+                pygame.draw.rect(surface, colors[i], (x, y, btn_w, btn_h))
+                pygame.draw.rect(surface, BLACK, (x, y, btn_w, btn_h), 2)
+                txt = self.font.render(label, True, BLACK)
+                surface.blit(txt, (x + btn_w//2 - txt.get_width()//2, y + btn_h//2 - txt.get_height()//2))
+            pygame.display.flip()
+            return
         
         # 绘制草坪网格背景
         for row in range(GRID_ROWS):
@@ -495,6 +689,10 @@ class PlantsVsZombies:
         # 绘制僵尸
         for zombie in self.zombies:
             zombie.draw(surface)
+
+        # 绘制小推车
+        for mower in self.lawn_mowers:
+            mower.draw(surface)
         
         # 绘制UI
         self.draw_ui(surface)
@@ -504,17 +702,35 @@ class PlantsVsZombies:
             self.draw_game_over(surface)
         elif self.game_win:
             self.draw_game_win(surface)
+        elif self.paused:
+            self.draw_pause(surface)
         
         pygame.display.flip()
     
     def draw_ui(self, surface):
         # 绘制阳光数量
         sun_text = self.font.render(f"阳光: {self.sun_count}", True, BLACK)
-        surface.blit(sun_text, (10, 10))
+        surface.blit(sun_text, (10, 1))
         
         # 绘制波数
         wave_text = self.font.render(f"波数: {self.wave_count}/{self.max_waves}", True, BLACK)
-        surface.blit(wave_text, (SCREEN_WIDTH - 150, 10))
+        surface.blit(wave_text, (SCREEN_WIDTH - 150, 1))
+
+        # 绘制当前关卡
+        if self.level:
+            level_map = {'easy': '简单', 'normal': '普通', 'hard': '困难'}
+            lvl_text = self.font.render(f"关卡: {level_map.get(self.level, '')}", True, BLACK)
+            surface.blit(lvl_text, (SCREEN_WIDTH - 300, 1))
+
+        # 功能按钮（暂停/重开/主菜单）
+        def draw_btn(rect, label, color):
+            pygame.draw.rect(surface, color, rect)
+            pygame.draw.rect(surface, BLACK, rect, 2)
+            t = self.font.render(label, True, BLACK)
+            surface.blit(t, (rect.centerx - t.get_width()//2, rect.centery - t.get_height()//2))
+        draw_btn(self.ui_buttons['pause'], '暂停/继续', (230, 230, 230))
+        draw_btn(self.ui_buttons['restart'], '重新开始', (230, 230, 230))
+        draw_btn(self.ui_buttons['menu'], '主菜单', (230, 230, 230))
         
         # 绘制植物选择按钮
         button_width = 100
@@ -578,6 +794,30 @@ class PlantsVsZombies:
                                SCREEN_HEIGHT//2 - win_text.get_height()//2))
         surface.blit(restart_text, (SCREEN_WIDTH//2 - restart_text.get_width()//2, 
                                    SCREEN_HEIGHT//2 + 50))
+
+    def draw_pause(self, surface):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(160)
+        overlay.fill((50, 50, 50))
+        surface.blit(overlay, (0, 0))
+        pause_text = self.large_font.render("暂停", True, WHITE)
+        tips_text = self.font.render("点击顶部按钮：暂停/继续、重新开始、主菜单", True, WHITE)
+        surface.blit(pause_text, (SCREEN_WIDTH//2 - pause_text.get_width()//2,
+                                  SCREEN_HEIGHT//2 - pause_text.get_height()//2 - 20))
+        surface.blit(tips_text, (SCREEN_WIDTH//2 - tips_text.get_width()//2,
+                                 SCREEN_HEIGHT//2 + 20))
+
+        def draw_pause(self, surface):
+                overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                overlay.set_alpha(160)
+                overlay.fill((50, 50, 50))
+                surface.blit(overlay, (0, 0))
+                pause_text = self.large_font.render("暂停", True, WHITE)
+                tips_text = self.font.render("按 P 恢复，R 重开，M 主菜单", True, WHITE)
+                surface.blit(pause_text, (SCREEN_WIDTH//2 - pause_text.get_width()//2,
+                                                                    SCREEN_HEIGHT//2 - pause_text.get_height()//2 - 20))
+                surface.blit(tips_text, (SCREEN_WIDTH//2 - tips_text.get_width()//2,
+                                                                 SCREEN_HEIGHT//2 + 20))
 
 # 主函数
 def main():

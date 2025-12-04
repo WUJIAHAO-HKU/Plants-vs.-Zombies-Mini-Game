@@ -47,6 +47,16 @@ python游戏制作/
 ![Screenshot 2](resources/screenshots/screenshot2.png)
 ![Screenshot 3](resources/screenshots/screenshot3.png)
 
+## Gameplay Video
+- Place your recorded gameplay at `resources/gameplay.mp4`.
+- Direct link (once pushed): `resources/gameplay.mp4`
+
+HTML embed preview (GitHub may not autoplay videos; it will show a link):
+
+<video src="resources/gameplay.mp4" controls width="800">
+  Your browser does not support the video tag.
+</video>
+
 ## License
 MIT
 
