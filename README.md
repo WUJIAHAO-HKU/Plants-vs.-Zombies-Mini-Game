@@ -34,39 +34,8 @@ python 植物大战僵尸.py
 ```
 - Controls: Click a plant button, then click a grid cell to place. Click suns to collect. Press `R` to restart, `Esc` or close window to exit.
 
-## Project Structure
-```
-python游戏制作/
-├─ 植物大战僵尸.py
-└─ resources/
-   └─ screenshots/  # add your images here
-```
-
-## Screenshots
-![Screenshot 1](resources/screenshots/screenshot1.png)
-![Screenshot 2](resources/screenshots/screenshot2.png)
-![Screenshot 3](resources/screenshots/screenshot3.png)
-
 ## Gameplay Video
-- Place your recorded gameplay at `resources/gameplay.mp4`.
-- Direct link (once pushed): `resources/gameplay.mp4`
-
-HTML embed (GitHub often disables autoplay in READMEs):
-
-<video src="resources/gameplay.mp4" controls width="800" muted autoplay loop playsinline>
-  Your browser does not support the video tag.
-</video>
-
-Tip: GitHub README pages typically block video autoplay. For an auto-playing preview, use an animated GIF:
-
-![Gameplay GIF](resources/gameplay.gif)
-
-Create a GIF from your MP4 (Windows, requires ffmpeg):
-
-```bat
-ffmpeg -i resources\gameplay.mp4 -vf "fps=20,scale=800:-1:flags=lanczos" -y resources\gameplay.gif
-```
-
+![2025-12-04T05_58_15 443Z-263826](https://github.com/user-attachments/assets/31cc1514-4c62-4139-a273-d09e18414b08)
 
 ## License
 MIT
