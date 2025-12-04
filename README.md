@@ -51,11 +51,22 @@ python游戏制作/
 - Place your recorded gameplay at `resources/gameplay.mp4`.
 - Direct link (once pushed): `resources/gameplay.mp4`
 
-HTML embed preview (GitHub may not autoplay videos; it will show a link):
+HTML embed (GitHub often disables autoplay in READMEs):
 
-<video src="resources/gameplay.mp4" controls width="800">
+<video src="resources/gameplay.mp4" controls width="800" muted autoplay loop playsinline>
   Your browser does not support the video tag.
 </video>
+
+Tip: GitHub README pages typically block video autoplay. For an auto-playing preview, use an animated GIF:
+
+![Gameplay GIF](resources/gameplay.gif)
+
+Create a GIF from your MP4 (Windows, requires ffmpeg):
+
+```bat
+ffmpeg -i resources\gameplay.mp4 -vf "fps=20,scale=800:-1:flags=lanczos" -y resources\gameplay.gif
+```
+
 
 ## License
 MIT
